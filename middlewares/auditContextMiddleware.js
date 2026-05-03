@@ -1,6 +1,7 @@
 /**
  * Audit Context Middleware
  * Adds audit context to each request (user, timestamp, IP, etc.)
+ * NOTE: must be placed AFTER body-parser so req.body is already populated.
  */
 const auditContextMiddleware = (req, res, next) => {
   req.auditContext = {
@@ -9,21 +10,11 @@ const auditContextMiddleware = (req, res, next) => {
     path: req.path,
     ip: req.ip || req.connection.remoteAddress,
     userAgent: req.get('user-agent'),
+    // req.body is safe to read here because body-parser runs first
+    body: req.method !== 'GET' ? req.body : undefined,
   };
 
-  // Store original body for audit logging
-  if (req.method !== 'GET') {
-    let data = '';
-    req.on('data', (chunk) => {
-      data += chunk;
-    });
-    req.on('end', () => {
-      req.auditContext.body = data;
-      next();
-    });
-  } else {
-    next();
-  }
+  next();
 };
 
 module.exports = auditContextMiddleware;
